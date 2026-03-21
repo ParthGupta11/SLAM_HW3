@@ -1,0 +1,19 @@
+[project]
+name = "slam-hw-solvers"
+version = "0.1.0"
+requires-python = ">=3.13"
+dependencies = [
+    "numpy",
+    "cffi",
+    "scipy",
+    "matplotlib",
+    "sparseqr",
+    "tyro",
+]
+
+[project.optional-dependencies]
+sparseqr = ["sparseqr @ git+https://github.com/huangjuite/PySPQR.git"]
+
+[tool.uv]
+package = false
+
