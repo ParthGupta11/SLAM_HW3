@@ -44,10 +44,44 @@ def create_linear_system(
     sqrt_inv_obs = np.linalg.inv(scipy.linalg.sqrtm(sigma_observation))
 
     # TODO: First fill in the prior to anchor the 1st pose at (0, 0)
+    sigma_p = np.diag([0.1, 0.1])
+    sqrt_inv_p = np.linalg.inv(scipy.linalg.sqrtm(sigma_p))
+    # The jacobian of r0 wrt r0 is identity and 0 otherwise
+    A[:2, :2] = sqrt_inv_p @ np.identity(2)
 
     # TODO: Then fill in odometry measurements
+    J_odom = np.array([[-1, 0, 1, 0], [0, -1, 0, 1]])
+    A_odom = sqrt_inv_odom @ J_odom
+    for i in range(n_odom):
+        A[2 + 2 * i : 2 + 2 * i + 2, 2 * i : 2 * i + 4] = A_odom
 
     # TODO: Then fill in landmark measurements
+    J_obs = np.array([[-1, 0, 1, 0], [0, -1, 0, 1]])
+    A_obs = sqrt_inv_obs @ J_obs
+    A_obs_pose = A_obs[:, :2]
+    A_obs_landmark = A_obs[:, 2:]
+    for i in range(n_obs):
+        pose_idx = int(observations[i, 0])
+        landmark_idx = int(observations[i, 1])
+        pose_col = 2 * pose_idx
+        landmark_col = 2 * n_poses + 2 * landmark_idx
+        obs_row = 2 + 2 * n_odom + 2 * i
+
+        A[obs_row : obs_row + 2, pose_col : pose_col + 2] = A_obs_pose
+        A[obs_row : obs_row + 2, landmark_col : landmark_col + 2] = A_obs_landmark
+
+    # Construct b
+    clarity: b[0:2] = (sqrt_inv_p @ np.array([0, 0])).flatten
+
+    for i in range(n_odom):
+        b[2 + 2 * i : 2 + 2 * i + 2] = (
+            sqrt_inv_odom @ odoms[i, :].reshape(-1, 1)
+        ).flatten()
+
+    for i in range(n_obs):
+        b[2 + 2 * n_odom + 2 * i : 2 + 2 * n_odom + 2 * i + 2] = (
+            sqrt_inv_obs @ observations[i, 2:].reshape(-1, 1)
+        ).flatten()
 
     return csr_matrix(A), b
 
