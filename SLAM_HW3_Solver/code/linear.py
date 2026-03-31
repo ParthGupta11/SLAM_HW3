@@ -71,7 +71,7 @@ def create_linear_system(
         A[obs_row : obs_row + 2, landmark_col : landmark_col + 2] = A_obs_landmark
 
     # Construct b
-    clarity: b[0:2] = (sqrt_inv_p @ np.array([0, 0])).flatten
+    b[0:2] = (sqrt_inv_p @ np.array([0, 0])).flatten
 
     for i in range(n_odom):
         b[2 + 2 * i : 2 + 2 * i + 2] = (
