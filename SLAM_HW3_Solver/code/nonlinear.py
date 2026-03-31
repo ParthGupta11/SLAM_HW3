@@ -59,8 +59,9 @@ def odometry_estimation(x, i):
     \return odom Odometry (\Delta x, \Delta) in the shape (2, )
     """
     # TODO: return odometry estimation
-    odom = np.zeros((2,))
-
+    pose_initial = x[2 * i : 2 * i + 2]
+    pose_final = x[2 * (i + 1) : 2 * (i + 1) + 2]
+    odom = pose_final - pose_initial
     return odom
 
 
@@ -75,6 +76,10 @@ def bearing_range_estimation(x, i, j, n_poses):
     # TODO: return bearing range estimations
     obs = np.zeros((2,))
 
+    pose = x[2 * i : 2 * i + 2]
+    landmark = x[2 * n_poses + 2 * j : 2 * n_poses + 2 * j + 2]
+    obs[0] = np.atan2(landmark[1] - pose[1], landmark[0] - pose[0])  # theta
+    obs[1] = np.sqrt((landmark[0] - pose[0]) ** 2 + (landmark[1] - pose[1]) ** 2)  # d
     return obs
 
 
@@ -88,6 +93,26 @@ def compute_meas_obs_jacobian(x, i, j, n_poses):
     """
     # TODO: return jacobian matrix
     jacobian = np.zeros((2, 4))
+
+    pose = x[2 * i : 2 * i + 2]
+    landmark = x[2 * n_poses + 2 * j : 2 * n_poses + 2 * j + 2]
+
+    delta_x = landmark[0] - pose[0]
+    delta_y = landmark[1] - pose[1]
+    q = delta_y**2 + delta_x**2
+    sqrt_q = q**0.5
+
+    # derivatives of theta
+    jacobian[0, 0] = delta_y / q  # wrt r_x
+    jacobian[0, 1] = -delta_x / q  # wrt r_y
+    jacobian[0, 2] = -delta_y / q  # wrt l_x
+    jacobian[0, 3] = delta_x / q  # wrt l_y
+
+    # derivatives of d
+    jacobian[1, 0] = -delta_x / sqrt_q  # wrt r_x
+    jacobian[1, 1] = -delta_y / sqrt_q  # wrt r_y
+    jacobian[1, 2] = delta_x / sqrt_q  # wrt l_x
+    jacobian[1, 3] = delta_y / sqrt_q  # wrt l_y
 
     return jacobian
 
@@ -132,9 +157,9 @@ def create_linear_system(
 @dataclass
 class Args:
     data: str = "../data/2d_nonlinear.npz"
-    method: list[Literal["default", "pinv", "qr", "lu", "qr_colamd", "lu_colamd"]] = (
-        field(default_factory=lambda: ["default"])
-    )
+    method: list[
+        Literal["default", "pinv", "qr", "lu", "qr_colamd", "lu_colamd"]
+    ] = field(default_factory=lambda: ["default"])
 
 
 if __name__ == "__main__":
